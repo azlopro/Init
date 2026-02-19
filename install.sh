@@ -6,9 +6,9 @@
 set -e
 
 # Default source location (Change this to your actual repository)
-export REPO_URL="${REPO_URL:-https://github.com/your-org/your-repo.git}"
+export REPO_URL="${REPO_URL:-https://github.com/azlopro/Init.git}"
 export REPO_BRANCH="${REPO_BRANCH:-main}"
-export SETUP_SCRIPTS_RAW_URL="${SETUP_SCRIPTS_RAW_URL:-https://raw.githubusercontent.com/your-org/your-repo/refs/heads/${REPO_BRANCH}}"
+export SETUP_SCRIPTS_RAW_URL="${SETUP_SCRIPTS_RAW_URL:-https://raw.githubusercontent.com/azlopro/Init/refs/heads/${REPO_BRANCH}}"
 
 # Environment variable prep
 export SSH_PORT="${SSH_PORT:-$((RANDOM % 40000 + 10240))}"
