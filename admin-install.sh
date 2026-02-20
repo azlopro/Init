@@ -166,14 +166,13 @@ setup_environment() {
             local grafana_pass=$(openssl rand -hex 16)
             
             # Auto-replace passwords in .env
-            sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${pg_pass}/" .env
-            sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=${redis_pass}/" .env
-            sed -i "s/^GRAFANA_PASSWORD=.*/GRAFANA_PASSWORD=${grafana_pass}/" .env
+            sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${pg_pass}/" .env || true
+            sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=${redis_pass}/" .env || true
+            sed -i "s/^GRAFANA_PASSWORD=.*/GRAFANA_PASSWORD=${grafana_pass}/" .env || true
             
             log_info "Auto-generated secure passwords for POSTGRES, REDIS, and GRAFANA in .env."
         else
-            log_error ".env.example not found! Cannot create .env."
-            exit 1
+            log_warn ".env.example not found. Skipping auto-generation of .env."
         fi
     fi
 }
@@ -198,33 +197,43 @@ fix_tempo_permissions() {
 create_secrets() {
     log_info "Creating Docker secrets..."
     if [[ ! -f "migrate.sh" ]]; then
-        log_error "migrate.sh not found!"
-        exit 1
+        log_warn "migrate.sh not found! Skipping docker secrets creation."
+        return
     fi
     
     chmod +x migrate.sh
     if ! ./migrate.sh; then
-        log_error "Failed to create secrets."
-        exit 1
+        log_error "Failed to create secrets. Continuing anyway..."
+    else
+        log_info "Docker secrets created successfully."
     fi
-    log_info "Docker secrets created successfully."
 }
 
-# 9. Verify Docker Volumes (CRITICAL STEP)
-verify_ssl_volume() {
-    log_info "Verifying docker-compose.prod.yml volumes..."
-    
-    if [[ ! -f "docker-compose.prod.yml" ]]; then
-         log_error "docker-compose.prod.yml not found!"
-         exit 1
+# 9. Find Compose File
+find_compose_file() {
+    if [[ -f "docker-compose.prod.yml" ]]; then
+        COMPOSE_FILE="docker-compose.prod.yml"
+    elif [[ -f "docker-compose.yml" ]]; then
+        COMPOSE_FILE="docker-compose.yml"
+    elif [[ -f "compose.yaml" ]]; then
+        COMPOSE_FILE="compose.yaml"
+    else
+        log_error "Could not find a valid docker compose file in $(pwd)!"
+        exit 1
     fi
+    log_info "Discovered compose file: $COMPOSE_FILE"
+}
 
+# 10. Verify Docker Volumes (CRITICAL STEP)
+verify_ssl_volume() {
+    log_info "Verifying $COMPOSE_FILE volumes..."
+    
     # Check if the LetsEncrypt volume is mounted. 
-    if ! grep -q "/etc/letsencrypt:/etc/letsencrypt" docker-compose.prod.yml; then
+    if ! grep -q "/etc/letsencrypt:/etc/letsencrypt" "$COMPOSE_FILE"; then
         log_warn "-------------------------------------------------------------"
         log_warn "CRITICAL WARNING: SSL VOLUME MISSING"
         log_warn "Your nginx.conf points to /etc/letsencrypt, but I don't see"
-        log_warn "host mapping for '/etc/letsencrypt' in docker-compose.prod.yml."
+        log_warn "host mapping for '/etc/letsencrypt' in $COMPOSE_FILE."
         log_warn "The Nginx container will likely crash."
         log_warn "-------------------------------------------------------------"
         if [[ "${AUTO_CONFIRM}" != "true" ]]; then
@@ -233,21 +242,20 @@ verify_ssl_volume() {
     fi
 }
 
-# 10. Launch the Application
+# 11. Launch the Application
 launch_application() {
-    log_info "Building and launching the application stack..."
-    log_warn "This will use 'docker-compose.prod.yml'..."
+    log_info "Building and launching the application stack using $COMPOSE_FILE..."
     
     # Use 'docker compose' (v2)
-    if ! docker compose -f docker-compose.prod.yml up -d --build; then
+    if ! docker compose -f "$COMPOSE_FILE" up -d --build; then
         log_error "Docker Compose failed to start!"
-        log_error "Run 'docker compose -f docker-compose.prod.yml logs' to check for errors."
+        log_error "Run 'docker compose -f $COMPOSE_FILE logs' to check for errors."
         exit 1
     fi
     
     log_info "\n\033[1;32m🚀 Deployment Complete! 🚀\033[0m"
     log_info "Your application should be available at https://$DOMAIN_NAME"
-    log_info "Run 'docker compose -f docker-compose.prod.yml ps' to see running services."
+    log_info "Run 'docker compose -f $COMPOSE_FILE ps' to see running services."
 }
 
 
@@ -271,6 +279,7 @@ main() {
     fix_tempo_permissions
     create_secrets
     
+    find_compose_file
     verify_ssl_volume 
     
     launch_application
