@@ -101,4 +101,4 @@ echo -e "\033[1;32m============================================================\
 echo -e "You can now connect to your server using:"
 echo -e "  ssh -p ${SSH_PORT} $ADMIN_USER@<server-ip>"
 echo -e ""
-echo -e "REMEMBER: If you generated MFA or fwknop keys, they have been logged above! Be sure to save them before you close the terminal!"
+echo -e "REMEMBER: Your MFA and fwknop keys were securely displayed during installation. Ensure you have saved them!"

@@ -108,3 +108,29 @@ echo ""
 echo "Then connect via SSH (within 60 seconds):"
 echo "  ssh -p ${SSH_PORT} <user>@<server_ip>"
 log_info "======================================================"
+
+echo ""
+log_warn "--- SECURE KEY STORAGE ---"
+log_warn "Please copy the keys above RIGHT NOW."
+log_warn "For security, they will be flushed from the screen and memory when you proceed."
+echo ""
+
+if [[ "${AUTO_CONFIRM}" != "true" ]]; then
+    while true; do
+        read -p "Type 'y' and press [Enter] AFTER you have securely saved the keys: " -r </dev/tty || true
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            break
+        fi
+    done
+fi
+
+# Securely flush variables from memory
+KEY_OUTPUT=""
+KEY_BASE64=""
+HMAC_KEY_BASE64=""
+unset KEY_OUTPUT KEY_BASE64 HMAC_KEY_BASE64
+
+# Completely wipe the terminal screen and scrollback buffer
+if [[ "${AUTO_CONFIRM}" != "true" ]]; then
+    printf '\033c'
+fi
