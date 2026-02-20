@@ -4,6 +4,13 @@ This repository contains robust setup scripts designed to initialize, harden, an
 
 ## Getting Started
 
+> [!CAUTION]
+> **CRITICAL PRE-FLIGHT CHECK**
+> Before running the script, verify the following. Failing to do so **WILL LOCK YOU OUT** of your server:
+> 1. **Authenticator App Ready**: You MUST have an app (Google Auth, Authy, etc.) ready on your phone. You will need to scan a QR code during this script. If you miss this, you cannot log in.
+> 2. **SSH Public Key Present**: You MUST have an SSH Public Key in `/root/.ssh/authorized_keys`. This script disables password authentication completely and copies the root key to your new admin user. If `/root/.ssh/authorized_keys` is empty/missing, your new user will have NO keys and NO password access.
+> 3. **Fresh Install**: This script is designed for a FRESH Debian 13 install. Running on an existing system may overwrite configs and break services.
+
 To initialize your server, simply run the following command as `root` on a fresh Debian 13 installation:
 
 ```bash
