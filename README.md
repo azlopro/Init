@@ -45,17 +45,3 @@ export EMAIL_ADDR=admin@example.com
 export AUTO_CONFIRM=true # Set to true to bypass interactive prompts and pauses (like MFA QR code)
 curl -fsSL https://raw.githubusercontent.com/azlopro/Init/main/install.sh | bash
 ```
-
-## Branching Strategy (e.g., Docker Swarm vs Standalone)
-
-This repository is designed to be fully modular! If you want a different setup (like Docker Swarm initialization), you can build it in a separate branch on this repository.
-
-1. Create a new branch: `git checkout -b swarm-setup`
-2. Modify `admin-install.sh` in the new branch to execute `docker swarm init` and deploy a stack instead of standard `docker compose`.
-3. Push the branch to GitHub.
-4. When you execute the script on a new machine, just tell `install.sh` to pull from the specific branch by overriding the `REPO_BRANCH` environment variable:
-
-```bash
-export REPO_BRANCH="swarm-setup"
-curl -fsSL https://raw.githubusercontent.com/azlopro/Init/main/install.sh | bash
-```
