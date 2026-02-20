@@ -197,8 +197,9 @@ create_new_user() {
     fi
 
     # Securely set initial password
-    log_info "Please set a strong temporary password for $username."
-    if ! passwd "$username"; then
+    local temp_pass=$(openssl rand -base64 12)
+    log_info "Setting temporary auto-generated password for $username: ${temp_pass}"
+    if ! echo "$username:$temp_pass" | chpasswd; then
         log_error "Failed to set password for $username"
         exit 1
     fi
@@ -457,7 +458,11 @@ EOF
 
 configure_unattended_upgrades() {
     log_info "Configuring unattended-upgrades..."
-    if ! /usr/sbin/dpkg-reconfigure -plow unattended-upgrades; then
+    
+    # Pre-seed dpkg to prevent the interactive prompt
+    echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
+    
+    if ! env DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades; then
         log_error "Failed to configure unattended-upgrades."
     fi
     sed -i 's#//Unattended-Upgrade::Automatic-Reboot "false";#Unattended-Upgrade::Automatic-Reboot "true";#' /etc/apt/apt.conf.d/50unattended-upgrades
