@@ -36,8 +36,8 @@ log_info "Generating fwknop keys..."
 KEY_OUTPUT=$(fwknop --key-gen --use-hmac 2>&1 || true)
 
 # Extract keys using grep and awk
-KEY_BASE64=$(echo "$KEY_OUTPUT" | grep 'KEY_BASE64' | awk '{print $2}' || true)
-HMAC_KEY_BASE64=$(echo "$KEY_OUTPUT" | grep 'HMAC_KEY_BASE64' | awk '{print $2}' || true)
+KEY_BASE64=$(echo "$KEY_OUTPUT" | grep '^KEY_BASE64' | awk '{print $2}' || true)
+HMAC_KEY_BASE64=$(echo "$KEY_OUTPUT" | grep '^HMAC_KEY_BASE64' | awk '{print $2}' || true)
 
 if [[ -z "$KEY_BASE64" || -z "$HMAC_KEY_BASE64" ]]; then
     log_error "Failed to generate keys!"
