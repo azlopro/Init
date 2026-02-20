@@ -20,6 +20,30 @@ echo -e "\033[1;36m               Automated Server Setup Starting               
 echo -e "\033[1;36m============================================================\033[0m"
 echo ""
 
+if [[ "$AUTO_CONFIRM" == "true" ]]; then
+    echo -e "\033[1;33m[WARN]\033[0m AUTO_CONFIRM is enabled. Running pre-flight ENV checks..."
+    
+    MISSING_VARS=()
+    [[ -z "$INSTALL_STACK" ]] && MISSING_VARS+=("INSTALL_STACK")
+    [[ -z "$ADMIN_USER" ]] && MISSING_VARS+=("ADMIN_USER")
+    
+    # If a stack is forced, we also need domain and email
+    if [[ "$INSTALL_STACK" != "none" && -n "$INSTALL_STACK" ]]; then
+        [[ -z "$DOMAIN_NAME" ]] && MISSING_VARS+=("DOMAIN_NAME")
+        [[ -z "$EMAIL_ADDR" ]] && MISSING_VARS+=("EMAIL_ADDR")
+    fi
+
+    if [ ${#MISSING_VARS[@]} -ne 0 ]; then
+        echo -e "\033[1;31m[ERROR]\033[0m The following required variables are missing for an unattended install:"
+        for var in "${MISSING_VARS[@]}"; do
+            echo -e "  - $var"
+        done
+        echo -e "\033[1;33m[INFO]\033[0m Please set them. Example: export ADMIN_USER=myadmin"
+        exit 1
+    fi
+    echo -e "\033[1;32m[OK]\033[0m All required variables present."
+fi
+
 if [[ -z "$INSTALL_STACK" ]]; then
     echo -e "Which application stack would you like to install after base setup?"
     echo -e "  \033[1m1) admin-install\033[0m (Default Azlo template)"

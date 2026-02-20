@@ -201,7 +201,43 @@ create_new_user() {
     log_info "Setting temporary auto-generated password for $username: ${temp_pass}"
     if ! echo "$username:$temp_pass" | chpasswd; then
         log_error "Failed to set password for $username"
+        unset temp_pass
         exit 1
+    fi
+
+    log_warn "--- SECURE ADMIN PASSWORD ---"
+    log_warn "Please copy the temporary admin password above RIGHT NOW."
+    log_warn "It will be flushed from the screen and memory when you proceed."
+    echo ""
+
+    if [[ "${AUTO_CONFIRM}" != "true" ]]; then
+        while true; do
+            read -p "Type 'y' and press [Enter] AFTER you have securely saved the password: " -r </dev/tty || true
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                break
+            fi
+        done
+    fi
+
+    # Securely flush the temp password from memory
+    unset temp_pass
+
+    # Completely wipe the terminal screen and scrollback buffer for security
+    if [[ "${AUTO_CONFIRM}" != "true" ]]; then
+        printf '\033c'
+    fi
+
+    # Lock the root account password securely
+    log_info "Generating random secure password for root and locking account..."
+    local root_pass="$(openssl rand -base64 32)!@#"
+    echo "root:$root_pass" | chpasswd
+    passwd -l root
+    unset root_pass
+
+    # Optional: completely DELETE default Debian user if it exists (e.g., from cloud images)
+    if id "debian" &>/dev/null; then
+        log_warn "Deleting default 'debian' user account..."
+        userdel -r debian || true
     fi
 
     if [[ "$grant_sudo" == "true" ]]; then
@@ -228,27 +264,33 @@ create_new_user() {
     # Force password change on next login
     chage -d 0 "$username"
 
-    # --- MFA SETUP (Enforced) ---
-    log_info "Setting up MFA (Google Authenticator) for $username..."
-    # Run google-authenticator as the user:
-    # -t: Time-based
-    # -d: Disallow reuse
-    # -f: Force (no interactive prompt to write file)
-    # -r 3 -R 30: Rate limiting
-    # -w 3: Window size
-    su - "$username" -c "google-authenticator -t -d -f -r 3 -R 30 -w 3"
+    # --- MFA SETUP (Enforced on First Login) ---
+    log_info "Configuring MFA (Google Authenticator) enforcement on first login for $username..."
     
-    log_warn "----------------------------------------------------------------"
-    log_warn "IMPORTANT: SCAN THE QR CODE ABOVE WITH YOUR AUTHENTICATOR APP!"
-    log_warn "MFA is MANDATORY. You will NOT be able to log in without it."
-    log_warn "----------------------------------------------------------------"
+    # We add a script to their .profile that forces MFA setup if the config file doesn't exist
+    cat << 'EOF' >> "/home/$username/.profile"
 
-    if [[ "${AUTO_CONFIRM}" != "true" ]]; then
-        # Read from /dev/tty so it works even if script is piped to bash
-        read -p "Press [Enter] after successfully scanning the QR code... " </dev/tty || true
-    else
-        log_warn "AUTO_CONFIRM is set to true. Bypassing pause... ensure you scroll up to scan the QR code!"
-    fi
+# Force Google Authenticator setup on first login
+if [ ! -f "$HOME/.google_authenticator" ]; then
+    echo -e "\033[1;31m================================================================\033[0m"
+    echo -e "\033[1;31m    ACTION REQUIRED: SET UP MULTI-FACTOR AUTHENTICATION NOW     \033[0m"
+    echo -e "\033[1;31m================================================================\033[0m"
+    echo -e "\033[1;33mPlease scan the QR code that will be generated below using your\033[0m"
+    echo -e "\033[1;33mAuthenticator app (Google Authenticator, Authy, etc).\033[0m"
+    echo ""
+    read -p "Press [Enter] to generate your QR code... "
+    
+    google-authenticator -t -d -f -r 3 -R 30 -w 3
+    
+    echo -e "\033[1;32m================================================================\033[0m"
+    echo -e "\033[1;32m    MFA CONFIGURED SUCCESSFULLY. PLEASE RELOGIN TO CONTINUE.    \033[0m"
+    echo -e "\033[1;32m================================================================\033[0m"
+    exit
+fi
+EOF
+    
+    chown "$username:$username" "/home/$username/.profile"
+    chmod 644 "/home/$username/.profile"
 
     log_info "User $username created successfully."
 }
