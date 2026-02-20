@@ -13,10 +13,24 @@ export SETUP_SCRIPTS_RAW_URL="${SETUP_SCRIPTS_RAW_URL:-https://raw.githubusercon
 # Environment variable prep
 export SSH_PORT="${SSH_PORT:-$((RANDOM % 40000 + 10240))}"
 export AUTO_CONFIRM="${AUTO_CONFIRM:-true}"
+export INSTALL_STACK="${INSTALL_STACK:-}"
 
 echo -e "\033[1;36m============================================================\033[0m"
 echo -e "\033[1;36m               Automated Server Setup Starting                \033[0m"
 echo -e "\033[1;36m============================================================\033[0m"
+echo ""
+
+if [[ -z "$INSTALL_STACK" ]]; then
+    echo -e "Which application stack would you like to install after base setup?"
+    echo -e "  \033[1m1) admin-install\033[0m (Default Azlo template)"
+    echo -e "  \033[1m2) none\033[0m (Base server hardening & docker only)"
+    read -rp "Select an option [1-2, default 1]: " STACK_CHOICE </dev/tty || true
+    case "$STACK_CHOICE" in
+        2) export INSTALL_STACK="none" ;;
+        *) export INSTALL_STACK="admin-install" ;;
+    esac
+fi
+echo -e "\033[1;34m[INFO]\033[0m Will deploy stack: $INSTALL_STACK"
 echo ""
 
 # Check if we have the admin user defined
@@ -26,14 +40,16 @@ if [[ -z "$ADMIN_USER" ]]; then
     export ADMIN_USER
 fi
 
-# We'll also prompt for domain and email here so we don't have to later
-if [[ -z "$DOMAIN_NAME" ]]; then
-    read -rp "Enter the domain name (for SSL): " DOMAIN_NAME </dev/tty || true
-    export DOMAIN_NAME
-fi
-if [[ -z "$EMAIL_ADDR" ]]; then
-    read -rp "Enter email address (for SSL alerts): " EMAIL_ADDR </dev/tty || true
-    export EMAIL_ADDR
+# We'll also prompt for domain and email here so we don't have to later, if a stack is selected
+if [[ "$INSTALL_STACK" != "none" ]]; then
+    if [[ -z "$DOMAIN_NAME" ]]; then
+        read -rp "Enter the domain name (for SSL): " DOMAIN_NAME </dev/tty || true
+        export DOMAIN_NAME
+    fi
+    if [[ -z "$EMAIL_ADDR" ]]; then
+        read -rp "Enter email address (for SSL alerts): " EMAIL_ADDR </dev/tty || true
+        export EMAIL_ADDR
+    fi
 fi
 
 echo -e "\033[1;34m[INFO]\033[0m Using SSH_PORT=$SSH_PORT"
@@ -53,7 +69,10 @@ download_script() {
 
 download_script "init.sh"
 download_script "setup-knocking.sh"
-download_script "admin-install.sh"
+
+if [[ "$INSTALL_STACK" == "admin-install" ]]; then
+    download_script "admin-install.sh"
+fi
 
 echo -e "\033[1;34m[INFO]\033[0m Starting phase 1: init.sh"
 /tmp/init.sh
@@ -61,8 +80,12 @@ echo -e "\033[1;34m[INFO]\033[0m Starting phase 1: init.sh"
 echo -e "\033[1;34m[INFO]\033[0m Starting phase 2: setup-knocking.sh"
 /tmp/setup-knocking.sh
 
-echo -e "\033[1;34m[INFO]\033[0m Starting phase 3: admin-install.sh (as user: $ADMIN_USER)"
-sudo -u "$ADMIN_USER" -E bash -c '/tmp/admin-install.sh'
+if [[ "$INSTALL_STACK" == "admin-install" ]]; then
+    echo -e "\033[1;34m[INFO]\033[0m Starting phase 3: admin-install.sh (as user: $ADMIN_USER)"
+    sudo -u "$ADMIN_USER" -E bash -c '/tmp/admin-install.sh'
+else
+    echo -e "\033[1;34m[INFO]\033[0m Skipping application stack installation (INSTALL_STACK=$INSTALL_STACK)"
+fi
 
 echo -e "\033[1;32m============================================================\033[0m"
 echo -e "\033[1;32m SETUP COMPLETE! \033[0m"
