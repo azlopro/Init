@@ -196,8 +196,8 @@ create_new_user() {
         exit 1
     fi
 
-    # Securely set initial password
-    local temp_pass=$(openssl rand -base64 12)
+    # Securely set initial password (ensure it meets strict pwquality requirements)
+    local temp_pass="$(openssl rand -base64 16)!aA1"
     log_info "Setting temporary auto-generated password for $username: ${temp_pass}"
     if ! echo "$username:$temp_pass" | chpasswd; then
         log_error "Failed to set password for $username"
