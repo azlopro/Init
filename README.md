@@ -35,7 +35,7 @@ export ADMIN_USER=myadmin
 export INSTALL_STACK=admin-install
 export DOMAIN_NAME=app.example.com
 export EMAIL_ADDR=admin@example.com
-export AUTO_CONFIRM=true
+export AUTO_CONFIRM=true # Set to true to bypass interactive prompts and pauses (like MFA QR code)
 curl -fsSL https://raw.githubusercontent.com/azlopro/Init/main/install.sh | bash
 ```
 

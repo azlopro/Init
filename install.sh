@@ -12,7 +12,7 @@ export SETUP_SCRIPTS_RAW_URL="${SETUP_SCRIPTS_RAW_URL:-https://raw.githubusercon
 
 # Environment variable prep
 export SSH_PORT="${SSH_PORT:-$((RANDOM % 40000 + 10240))}"
-export AUTO_CONFIRM="${AUTO_CONFIRM:-true}"
+export AUTO_CONFIRM="${AUTO_CONFIRM:-false}"
 export INSTALL_STACK="${INSTALL_STACK:-}"
 
 echo -e "\033[1;36m============================================================\033[0m"
