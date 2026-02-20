@@ -55,16 +55,24 @@ fi
 echo -e "\033[1;34m[INFO]\033[0m Using SSH_PORT=$SSH_PORT"
 echo ""
 
+# Create a safe workspace
+WORKSPACE=$(mktemp -d)
+echo -e "\033[1;34m[INFO]\033[0m Created temporary workspace at $WORKSPACE"
+
 download_script() {
     local script_name="$1"
     if [[ -f "./$script_name" ]]; then
         echo -e "\033[1;34m[INFO]\033[0m Using local ./$script_name"
-        cp "./$script_name" "/tmp/$script_name"
+        cp "./$script_name" "$WORKSPACE/$script_name"
     else
         echo -e "\033[1;34m[INFO]\033[0m Downloading $script_name from $SETUP_SCRIPTS_RAW_URL..."
-        curl -fsSL "$SETUP_SCRIPTS_RAW_URL/$script_name" -o "/tmp/$script_name"
+        if ! curl -fsSL "$SETUP_SCRIPTS_RAW_URL/$script_name" > "$WORKSPACE/$script_name"; then
+            echo -e "\033[1;31m[ERROR]\033[0m Failed to download $script_name! Using curl fallback..."
+            # Try without silent fail to see error if it happens again
+            curl -SL "$SETUP_SCRIPTS_RAW_URL/$script_name" -o "$WORKSPACE/$script_name"
+        fi
     fi
-    chmod +x "/tmp/$script_name"
+    chmod +x "$WORKSPACE/$script_name"
 }
 
 download_script "init.sh"
@@ -75,14 +83,14 @@ if [[ "$INSTALL_STACK" == "admin-install" ]]; then
 fi
 
 echo -e "\033[1;34m[INFO]\033[0m Starting phase 1: init.sh"
-/tmp/init.sh
+"$WORKSPACE/init.sh"
 
 echo -e "\033[1;34m[INFO]\033[0m Starting phase 2: setup-knocking.sh"
-/tmp/setup-knocking.sh
+"$WORKSPACE/setup-knocking.sh"
 
 if [[ "$INSTALL_STACK" == "admin-install" ]]; then
     echo -e "\033[1;34m[INFO]\033[0m Starting phase 3: admin-install.sh (as user: $ADMIN_USER)"
-    sudo -u "$ADMIN_USER" -E bash -c '/tmp/admin-install.sh'
+    sudo -u "$ADMIN_USER" -E bash -c "$WORKSPACE/admin-install.sh"
 else
     echo -e "\033[1;34m[INFO]\033[0m Skipping application stack installation (INSTALL_STACK=$INSTALL_STACK)"
 fi
